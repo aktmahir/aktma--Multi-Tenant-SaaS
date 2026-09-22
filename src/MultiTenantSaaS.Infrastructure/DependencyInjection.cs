@@ -17,10 +17,15 @@ public static class DependencyInjection
         services.AddScoped<TenantContext>();
         services.AddScoped<ITenantContext>(provider => provider.GetRequiredService<TenantContext>());
         services.AddScoped<ITenantResolver, TenantResolver>();
+        services.AddScoped<ITenantMembershipService, TenantMembershipService>();
+        services.AddScoped<ITenantProvisioningService, TenantProvisioningService>();
         services.AddDbContext<CatalogDbContext>(options => options.UseNpgsql(connectionString));
         services.AddDbContext<TenantDbContext>(options => options
             .UseNpgsql(connectionString)
             .ReplaceService<IModelCacheKeyFactory, TenantModelCacheKeyFactory>());
+        services.AddHealthChecks().AddNpgSql(connectionString, name: "catalog-database");
+        services.AddHostedService<CatalogMigrationHostedService>();
+        services.AddHostedService<CatalogSeedHostedService>();
         services.AddSerilog((_, logger) => logger.Enrich.FromLogContext().WriteTo.Console());
         return services;
     }

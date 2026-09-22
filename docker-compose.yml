@@ -9,7 +9,6 @@ services:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./scripts/seed.sql:/docker-entrypoint-initdb.d/01-seed.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U saas -d saas_catalog"]
       interval: 5s
@@ -23,16 +22,27 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__Catalog: Host=postgres;Port=5432;Database=saas_catalog;Username=saas;Password=saas
+      Authentication__Authority: http://localhost:8080
+      Authentication__Audience: saas-api
+      Database__ApplyMigrations: "true"
+      Seed__Enabled: "true"
+      Seed__DemoPassword: "NorthstarDemo!2026"
     ports:
       - "8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/api/health/ready >/dev/null || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
   frontend:
     build: ./frontend
     ports:
       - "3000:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 volumes:
   postgres-data:

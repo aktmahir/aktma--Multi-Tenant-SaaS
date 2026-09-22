@@ -30,7 +30,9 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: dotnet restore MultiTenantSaaS.slnx
+      - run: dotnet tool restore
       - run: dotnet format MultiTenantSaaS.slnx --verify-no-changes --no-restore
+      - run: dotnet ef database update --project src/MultiTenantSaaS.Infrastructure --startup-project src/MultiTenantSaaS.Api --context CatalogDbContext
       - run: dotnet test MultiTenantSaaS.slnx --no-restore
       - run: npm ci
         working-directory: frontend

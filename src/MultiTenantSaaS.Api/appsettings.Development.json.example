@@ -3,10 +3,20 @@
     "Catalog": "Host=localhost;Port=5432;Database=saas_catalog;Username=saas;Password=saas"
   },
   "Authentication": {
-    "Authority": "https://identity.example.com",
-    "Audience": "saas-api"
+    "Authority": "http://localhost:8080",
+    "Audience": "saas-api",
+    "SigningCertificatePath": "",
+    "SigningCertificatePassword": ""
   },
   "Cors": {
     "AllowedOrigins": ["http://localhost:3000"]
+  },
+  "Seed": {
+    "Enabled": false,
+    "DemoPassword": ""
+  },
+  "Database": {
+    "ApplyMigrations": true,
+    "AllowProductionMigrations": false
   }
 }

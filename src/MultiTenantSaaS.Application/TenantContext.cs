@@ -16,6 +16,11 @@ public interface ITenantResolver
     Task<TenantResolution?> ResolveAsync(HttpContext httpContext, CancellationToken cancellationToken);
 }
 
+public interface ITenantMembershipService
+{
+    Task<string?> GetRoleAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken);
+}
+
 public sealed record TenantResolution(Guid TenantId, string Slug, string SchemaName);
 
 public sealed class TenantContext : ITenantContext
@@ -35,9 +40,57 @@ public sealed class TenantContext : ITenantContext
 
 public static class ClaimsPrincipalExtensions
 {
+    public static Guid? GetUserId(this ClaimsPrincipal principal)
+    {
+        var value = principal.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? principal.FindFirstValue("sub");
+        return Guid.TryParse(value, out var userId) ? userId : null;
+    }
+
     public static Guid? GetTenantId(this ClaimsPrincipal principal)
     {
         var value = principal.FindFirstValue("tenant_id");
         return Guid.TryParse(value, out var tenantId) ? tenantId : null;
     }
 }
+
+public static class TenantClaimValidator
+{
+    public static bool Matches(ClaimsPrincipal principal, Guid tenantId) =>
+        principal.GetTenantId() is { } claimTenantId && claimTenantId == tenantId;
+
+    public static bool IsAuthorizedForTenant(ClaimsPrincipal principal, Guid tenantId, string? membershipRole = null)
+    {
+        if (Matches(principal, tenantId))
+        {
+            return true;
+        }
+
+        if (string.IsNullOrWhiteSpace(membershipRole))
+        {
+            return principal.IsInRole(TenantRoles.SuperAdmin);
+        }
+
+        return principal.IsInRole(TenantRoles.SuperAdmin) || !string.IsNullOrWhiteSpace(membershipRole);
+    }
+}
+
+public static class TenantTokenClaims
+{
+    public static bool TryCreate(Guid tenantId, string? role, out string tenantIdValue, out string roleValue)
+    {
+        tenantIdValue = string.Empty;
+        roleValue = string.Empty;
+
+        if (tenantId == Guid.Empty || string.IsNullOrWhiteSpace(role))
+        {
+            return false;
+        }
+
+        tenantIdValue = tenantId.ToString();
+        roleValue = role;
+        return true;
+    }
+}
+
+public sealed record ApiError(string Error, string Detail);

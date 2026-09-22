@@ -9,6 +9,7 @@ public sealed class TenantResolver(CatalogDbContext catalog, ITenantContext tena
     public async Task<TenantResolution?> ResolveAsync(HttpContext httpContext, CancellationToken cancellationToken)
     {
         var slug = httpContext.Request.Headers["X-Tenant"].FirstOrDefault()
+            ?? httpContext.Request.Query["tenant"].FirstOrDefault()
             ?? httpContext.User.FindFirst("tenant_id")?.Value;
 
         if (string.IsNullOrWhiteSpace(slug))
