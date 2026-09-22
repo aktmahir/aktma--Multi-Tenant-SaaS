@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MultiTenantSaaS.Api/MultiTenantSaaS.Api.csproj" />
+    <Project Path="src/MultiTenantSaaS.Application/MultiTenantSaaS.Application.csproj" />
+    <Project Path="src/MultiTenantSaaS.Domain/MultiTenantSaaS.Domain.csproj" />
+    <Project Path="src/MultiTenantSaaS.Infrastructure/MultiTenantSaaS.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MultiTenantSaaS.Tests/MultiTenantSaaS.Tests.csproj" />
+  </Folder>
+</Solution>

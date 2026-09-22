@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: saas_catalog
+          POSTGRES_USER: saas
+          POSTGRES_PASSWORD: saas
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U saas -d saas_catalog"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: dotnet restore MultiTenantSaaS.slnx
+      - run: dotnet format MultiTenantSaaS.slnx --verify-no-changes --no-restore
+      - run: dotnet test MultiTenantSaaS.slnx --no-restore
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run lint
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+
+  container:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./src
+          file: ./src/MultiTenantSaaS.Api/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository }}/api:latest

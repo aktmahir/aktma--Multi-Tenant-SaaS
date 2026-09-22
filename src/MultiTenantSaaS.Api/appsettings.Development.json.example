@@ -1,0 +1,12 @@
+{
+  "ConnectionStrings": {
+    "Catalog": "Host=localhost;Port=5432;Database=saas_catalog;Username=saas;Password=saas"
+  },
+  "Authentication": {
+    "Authority": "https://identity.example.com",
+    "Audience": "saas-api"
+  },
+  "Cors": {
+    "AllowedOrigins": ["http://localhost:3000"]
+  }
+}

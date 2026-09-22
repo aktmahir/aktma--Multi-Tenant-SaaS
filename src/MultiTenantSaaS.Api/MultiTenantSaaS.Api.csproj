@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MultiTenantSaaS.Application\MultiTenantSaaS.Application.csproj" />
+    <ProjectReference Include="..\MultiTenantSaaS.Infrastructure\MultiTenantSaaS.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
