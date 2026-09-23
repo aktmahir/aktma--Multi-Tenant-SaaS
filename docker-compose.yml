@@ -2,31 +2,34 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: saas_catalog
-      POSTGRES_USER: saas
-      POSTGRES_PASSWORD: saas
+      POSTGRES_DB: ${POSTGRES_DB:-saas_catalog}
+      POSTGRES_USER: ${POSTGRES_USER:-saas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas}
     ports:
       - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U saas -d saas_catalog"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas} -d ${POSTGRES_DB:-saas_catalog}"]
       interval: 5s
       timeout: 5s
       retries: 10
+
   api:
     build:
       context: ./src
       dockerfile: MultiTenantSaaS.Api/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__Catalog: Host=postgres;Port=5432;Database=saas_catalog;Username=saas;Password=saas
-      Authentication__Authority: http://localhost:8080
-      Authentication__Audience: saas-api
-      Database__ApplyMigrations: "true"
-      Seed__Enabled: "true"
-      Seed__DemoPassword: "NorthstarDemo!2026"
+      HttpsRedirection__Enabled: "false"
+      ConnectionStrings__Catalog: ${CATALOG_CONNECTION_STRING:-Host=postgres;Port=5432;Database=${POSTGRES_DB:-saas_catalog};Username=${POSTGRES_USER:-saas};Password=${POSTGRES_PASSWORD:-saas}}
+      Authentication__Authority: ${AUTHENTICATION_AUTHORITY:-http://localhost:8080}
+      Authentication__Audience: ${AUTHENTICATION_AUDIENCE:-saas-api}
+      Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      Database__ApplyMigrations: ${DATABASE_APPLY_MIGRATIONS:-true}
+      Seed__Enabled: ${SEED_ENABLED:-true}
+      Seed__DemoPassword: ${SEED_DEMO_PASSWORD:-NorthstarDemo!2026}
     ports:
       - "8080:8080"
     depends_on:
@@ -37,12 +40,19 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     ports:
       - "3000:80"
     depends_on:
       api:
         condition: service_healthy
+
 volumes:
   postgres-data:

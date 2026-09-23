@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using MultiTenantSaaS.Application;
+using MultiTenantSaaS.Domain;
 using MultiTenantSaaS.Infrastructure;
 
 namespace MultiTenantSaaS.Api;
@@ -68,9 +69,93 @@ public static class MembershipEndpoints
         .RequireAuthorization(Policies.CanManageUsers)
         .WithName("CreateMembership");
 
+        endpoints.MapPut("/api/memberships/{userId:guid}/role", async (
+            Guid userId,
+            UpdateMembershipRoleRequest request,
+            ClaimsPrincipal principal,
+            ITenantContext tenantContext,
+            TenantDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            if (tenantContext.TenantId is null || principal.GetUserId() is null)
+            {
+                return Results.Forbid();
+            }
+
+            if (!TenantRoles.IsSupported(request.Role))
+            {
+                return Results.BadRequest(new { error = "A supported role is required." });
+            }
+
+            var membership = await dbContext.Memberships
+                .SingleOrDefaultAsync(item => item.UserId == userId && item.TenantId == tenantContext.TenantId.Value, cancellationToken);
+
+            if (membership is null)
+            {
+                return Results.NotFound(new { error = "Membership was not found for this tenant." });
+            }
+
+            var previousRole = membership.Role;
+            membership.Role = request.Role;
+            dbContext.AuditEntries.Add(new AuditEntry
+            {
+                ActorId = principal.GetUserId(),
+                TenantId = tenantContext.TenantId.Value,
+                Action = "membership.updated",
+                Resource = membership.Id.ToString(),
+                IpAddress = null
+            });
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new MembershipResponse(membership.UserId, membership.Role) { });
+        })
+        .RequireAuthorization(Policies.CanManageUsers)
+        .WithName("UpdateMembershipRole");
+
+        endpoints.MapDelete("/api/memberships/{userId:guid}", async (
+            Guid userId,
+            ClaimsPrincipal principal,
+            ITenantContext tenantContext,
+            TenantDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            if (tenantContext.TenantId is null || principal.GetUserId() is null)
+            {
+                return Results.Forbid();
+            }
+
+            var currentUserId = principal.GetUserId();
+            if (currentUserId == userId)
+            {
+                return Results.BadRequest(new { error = "You cannot remove your own membership from the tenant." });
+            }
+
+            var membership = await dbContext.Memberships
+                .SingleOrDefaultAsync(item => item.UserId == userId && item.TenantId == tenantContext.TenantId.Value, cancellationToken);
+
+            if (membership is null)
+            {
+                return Results.NotFound(new { error = "Membership was not found for this tenant." });
+            }
+
+            dbContext.Memberships.Remove(membership);
+            dbContext.AuditEntries.Add(new AuditEntry
+            {
+                ActorId = principal.GetUserId(),
+                TenantId = tenantContext.TenantId.Value,
+                Action = "membership.removed",
+                Resource = membership.Id.ToString(),
+                IpAddress = null
+            });
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Results.NoContent();
+        })
+        .RequireAuthorization(Policies.CanManageUsers)
+        .WithName("RemoveMembership");
+
         return endpoints;
     }
 }
 
 public sealed record CreateMembershipRequest(Guid UserId, string Role);
+public sealed record UpdateMembershipRoleRequest(string Role);
 public sealed record MembershipResponse(Guid UserId, string Role);

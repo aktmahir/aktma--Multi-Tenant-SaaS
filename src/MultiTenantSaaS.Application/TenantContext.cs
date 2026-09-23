@@ -19,6 +19,8 @@ public interface ITenantResolver
 public interface ITenantMembershipService
 {
     Task<string?> GetRoleAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken);
+    Task<string?> UpdateRoleAsync(Guid userId, Guid tenantId, string role, CancellationToken cancellationToken);
+    Task<bool> RemoveAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken);
 }
 
 public sealed record TenantResolution(Guid TenantId, string Slug, string SchemaName);
@@ -61,17 +63,22 @@ public static class TenantClaimValidator
 
     public static bool IsAuthorizedForTenant(ClaimsPrincipal principal, Guid tenantId, string? membershipRole = null)
     {
-        if (Matches(principal, tenantId))
+        if (!Matches(principal, tenantId))
+        {
+            return false;
+        }
+
+        if (principal.IsInRole(TenantRoles.SuperAdmin))
         {
             return true;
         }
 
         if (string.IsNullOrWhiteSpace(membershipRole))
         {
-            return principal.IsInRole(TenantRoles.SuperAdmin);
+            return false;
         }
 
-        return principal.IsInRole(TenantRoles.SuperAdmin) || !string.IsNullOrWhiteSpace(membershipRole);
+        return principal.IsInRole(membershipRole);
     }
 }
 

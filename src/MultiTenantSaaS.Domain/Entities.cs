@@ -59,6 +59,17 @@ public sealed class TenantInvitation
     public DateTimeOffset? AcceptedAt { get; set; }
 
     public bool IsActive => !IsRevoked && AcceptedAt is null && ExpiresAt > DateTimeOffset.UtcNow;
+
+    public bool Revoke()
+    {
+        if (!IsActive)
+        {
+            return false;
+        }
+
+        IsRevoked = true;
+        return true;
+    }
 }
 
 public static class InvitationTokenHasher

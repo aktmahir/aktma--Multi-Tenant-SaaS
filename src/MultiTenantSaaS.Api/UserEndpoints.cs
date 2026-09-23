@@ -152,6 +152,72 @@ public static class UserEndpoints
         .RequireAuthorization(Policies.CanManageUsers)
         .WithName("CreateTenantInvitation");
 
+        endpoints.MapPost("/api/invitations/{invitationId:guid}/revoke", async (
+            Guid invitationId,
+            HttpContext httpContext,
+            ClaimsPrincipal principal,
+            ITenantContext tenantContext,
+            TenantDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            if (tenantContext.TenantId is null || principal.GetUserId() is null)
+            {
+                return Results.Forbid();
+            }
+
+            var invitation = await dbContext.Invitations
+                .SingleOrDefaultAsync(item => item.Id == invitationId && item.TenantId == tenantContext.TenantId.Value, cancellationToken);
+
+            if (invitation is null)
+            {
+                return Results.NotFound(new { error = "Invitation was not found for this tenant." });
+            }
+
+            if (!invitation.Revoke())
+            {
+                return Results.BadRequest(new { error = "The invitation is already expired, accepted, or revoked." });
+            }
+
+            dbContext.AuditEntries.Add(new AuditEntry
+            {
+                ActorId = principal.GetUserId(),
+                TenantId = tenantContext.TenantId.Value,
+                Action = "invitation.revoked",
+                Resource = invitation.Id.ToString(),
+                IpAddress = httpContext.Connection.RemoteIpAddress?.ToString()
+            });
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Results.Ok(new { revoked = true, id = invitation.Id, email = invitation.Email });
+        })
+        .RequireAuthorization(Policies.CanManageUsers)
+        .WithName("RevokeTenantInvitation");
+
+        endpoints.MapGet("/api/invitations", async (
+            ITenantContext tenantContext,
+            TenantDbContext dbContext,
+            CancellationToken cancellationToken) =>
+        {
+            if (tenantContext.TenantId is null)
+            {
+                return Results.Forbid();
+            }
+
+            var invitations = await dbContext.Invitations
+                .Where(item => item.TenantId == tenantContext.TenantId.Value)
+                .OrderByDescending(item => item.CreatedAt)
+                .Select(item => new InvitationSummary(
+                    item.Id,
+                    item.Email,
+                    item.Role,
+                    item.ExpiresAt,
+                    item.IsActive))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(invitations);
+        })
+        .RequireAuthorization(Policies.CanManageUsers)
+        .WithName("ListTenantInvitations");
+
         endpoints.MapPost("/api/invitations/accept", async (
             AcceptInvitationRequest request,
             UserManager<CatalogUser> userManager,
@@ -284,4 +350,5 @@ public sealed record CreateUserRequest(string Email, string DisplayName, string 
 public sealed record CreateInvitationRequest(string Email, string Role);
 public sealed record AcceptInvitationRequest(string Token, string Password);
 public sealed record InvitationResponse(Guid Id, string Email, string Role, DateTimeOffset ExpiresAt, string Token);
+public sealed record InvitationSummary(Guid Id, string Email, string Role, DateTimeOffset ExpiresAt, bool IsActive);
 public sealed record UserResponse(Guid Id, string Email, string DisplayName, bool IsActive, string Role);
