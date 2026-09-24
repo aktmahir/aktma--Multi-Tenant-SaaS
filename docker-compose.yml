@@ -1,6 +1,9 @@
 services:
   postgres:
     image: postgres:17-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-saas_catalog}
       POSTGRES_USER: ${POSTGRES_USER:-saas}
@@ -19,11 +22,14 @@ services:
     build:
       context: ./src
       dockerfile: MultiTenantSaaS.Api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ASPNETCORE_URLS: http://+:8080
       HttpsRedirection__Enabled: "false"
-      ConnectionStrings__Catalog: ${CATALOG_CONNECTION_STRING:-Host=postgres;Port=5432;Database=${POSTGRES_DB:-saas_catalog};Username=${POSTGRES_USER:-saas};Password=${POSTGRES_PASSWORD:-saas}}
+      ConnectionStrings__Catalog: Host=postgres;Port=5432;Database=${POSTGRES_DB:-saas_catalog};Username=${POSTGRES_USER:-saas};Password=${POSTGRES_PASSWORD:-saas}
       Authentication__Authority: ${AUTHENTICATION_AUTHORITY:-http://localhost:8080}
       Authentication__Audience: ${AUTHENTICATION_AUDIENCE:-saas-api}
       Cors__AllowedOrigins: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
@@ -46,6 +52,9 @@ services:
       context: ./frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
     ports:

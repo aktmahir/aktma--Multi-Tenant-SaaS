@@ -20,6 +20,8 @@ var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get
 
 builder.Host.UseSerilog((_, logger) => logger.Enrich.FromLogContext().WriteTo.Console());
 builder.Services.AddProblemDetails();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
 builder.Services.AddSingleton<ConsentStateProtector>();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddIdentityCore<CatalogUser>(options =>
@@ -143,6 +145,16 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHsts();
     app.UseHttpsRedirection();
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(options =>
+    {
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Northstar Multi-Tenant SaaS API");
+        options.RoutePrefix = "swagger";
+    });
 }
 
 app.UseExceptionHandler();

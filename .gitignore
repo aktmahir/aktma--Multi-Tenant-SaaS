@@ -55,3 +55,44 @@ nunit-*.xml
 
 # kilo
 .kilo
+
+# Local demo env and secrets
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+
+# IDE / editor
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+
+# Local tooling
+*.local
+*.user
+*.userosscache
+*.suo
+*.sqlite
+*.db
+*.pem
+*.pfx
+*.crt
+*.key
+
+# Temporary docs or output
+coverage/
+*.log
+*.tmp
+*.bak
+
+# Local cloud or deployment files
+secrets/
+*.secret
+*.token
+*.json.override
+*.override.json
